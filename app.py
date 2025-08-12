@@ -3,6 +3,8 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import firebase_admin
 from firebase_admin import credentials, firestore
+import os
+import json
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -355,3 +357,18 @@ def set_quiz_timer():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+
+# --- Initialize Firebase Admin SDK ---
+try:
+    # Check for the environment variable first
+    firebase_credentials_json = os.environ.get('FIREBASE_CREDENTIALS')
+    if firebase_credentials_json:
+        cred = credentials.Certificate(json.loads(firebase_credentials_json))
+        firebase_admin.initialize_app(cred)
+    else:
+        # Fallback to local file if not on Render
+        cred = credentials.Certificate("cbt-platform-8910c-firebase-adminsdk-fbsvc-73e123dcd5.json")
+        firebase_admin.initialize_app(cred)
+except ValueError:
+    pass
