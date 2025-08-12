@@ -1,0 +1,170 @@
+<!-- C:\Users\Agba Xchanger\cbt_platform\templates\quiz.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CBT Quiz - Question {{ current_question_index + 1 }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 500px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 font-sans p-8 flex flex-col items-center min-h-screen">
+    <div class="max-w-2xl w-full bg-white rounded-lg shadow-xl p-8 mb-8">
+        <div class="flex justify-between items-center mb-6 border-b pb-4">
+            <h1 class="text-2xl font-bold text-slate-800">Question {{ current_question_index + 1 }} of {{ total_questions }}</h1>
+            <div class="flex items-center space-x-2">
+                <span class="text-slate-600 font-semibold">Time Left:</span>
+                <span id="timer" class="bg-slate-200 text-slate-800 font-bold py-1 px-3 rounded-md shadow-inner"></span>
+            </div>
+        </div>
+
+        <div class="mb-8">
+            <p class="text-lg text-slate-700">{{ question.question }}</p>
+        </div>
+        
+        <form id="quizForm" action="{{ url_for('quiz') }}" method="post" class="space-y-4">
+            <input type="hidden" name="question_id" value="{{ question.id }}">
+            {% for choice in question.choices %}
+                <label class="block bg-slate-50 p-4 rounded-lg border border-slate-200 hover:bg-slate-100 transition duration-200 cursor-pointer">
+                    <input type="radio" name="{{ question.id }}" value="{{ choice }}" class="mr-3" required>
+                    <span class="text-base text-slate-800">{{ choice }}</span>
+                </label>
+            {% endfor %}
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:scale-105 mt-6">
+                Next
+            </button>
+        </form>
+    </div>
+
+    <!-- Instructions Modal -->
+    <div id="instructionsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeInstructionsModal()">&times;</span>
+            <h2 class="text-2xl font-bold mb-4">Quiz Instructions</h2>
+            <div class="text-left text-slate-700" id="instructions-content">
+                {{ instructions|safe }}
+            </div>
+            <button onclick="closeInstructionsModal()" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Start Quiz</button>
+        </div>
+    </div>
+    
+    <!-- Warning Modal for time running out -->
+    <div id="warningModal" class="modal">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold mb-4 text-red-600">Time's Almost Up!</h2>
+            <p class="text-lg text-slate-700">You have less than one minute remaining. Please submit your answers soon.</p>
+            <button onclick="closeWarningModal()" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Continue</button>
+        </div>
+    </div>
+
+    <!-- Final Submission Modal for time running out -->
+    <div id="timeoutModal" class="modal">
+        <div class="modal-content">
+            <h2 class="text-2xl font-bold mb-4 text-red-600">Time Is Up!</h2>
+            <p class="text-lg text-slate-700">Your quiz has been automatically submitted.</p>
+        </div>
+    </div>
+
+    <script>
+        const instructionsModal = document.getElementById('instructionsModal');
+        const warningModal = document.getElementById('warningModal');
+        const timeoutModal = document.getElementById('timeoutModal');
+        const timerDisplay = document.getElementById('timer');
+        const quizForm = document.getElementById('quizForm');
+        let warningShown = false;
+        
+        let timeLeft = {{ timer_minutes }} * 60;
+        let timerInterval;
+
+        // Function to start the timer
+        function startTimer() {
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+
+        // Show instructions modal on page load for the first question
+        // Otherwise, start the timer immediately for subsequent questions
+        window.onload = function() {
+            if ({{ current_question_index }} === 0) {
+                instructionsModal.style.display = 'flex';
+            } else {
+                startTimer();
+            }
+        }
+
+        // Close instruction modal and start timer
+        function closeInstructionsModal() {
+            instructionsModal.style.display = 'none';
+            startTimer();
+        }
+
+        // Close warning modal
+        function closeWarningModal() {
+            warningModal.style.display = 'none';
+        }
+        
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+
+        function updateTimer() {
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                timeoutModal.style.display = 'flex';
+                // Wait a moment for the user to see the modal before submitting
+                setTimeout(() => {
+                    quizForm.submit();
+                }, 2000); 
+            } else {
+                timerDisplay.textContent = formatTime(timeLeft);
+                
+                if (timeLeft <= 60 && !warningShown) {
+                    warningModal.style.display = 'flex';
+                    warningShown = true;
+                }
+                
+                timeLeft--;
+            }
+        }
+    </script>
+</body>
+</html>

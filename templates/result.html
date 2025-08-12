@@ -1,0 +1,33 @@
+<!-- C:\Users\Agba Xchanger\cbt_platform\templates\result.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Results</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 font-sans p-8 flex items-center justify-center min-h-screen">
+    <div class="max-w-xl w-full bg-white rounded-lg shadow-xl p-8 text-center">
+        <h1 class="text-3xl font-bold text-slate-800 mb-4">Quiz Complete!</h1>
+        <p class="text-lg text-slate-600">Your score is:</p>
+        <p class="text-5xl font-extrabold text-blue-600 my-6">
+            {{ score }} / {{ total }}
+            {% if total > 0 %}
+                {% set percentage = (score / total) * 100 %}
+                <span class="text-3xl font-bold ml-4 text-slate-800">({{ "%.2f"|format(percentage) }}%)</span>
+            {% endif %}
+        </p>
+
+        <div class="space-y-4 mt-6">
+            <a href="{{ url_for('answers') }}" class="inline-block w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+                Check Correct Answers
+            </a>
+            <a href="{{ url_for('logout') }}" class="inline-block w-full bg-slate-400 hover:bg-slate-500 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+                Logout
+            </a>
+        </div>
+    </div>
+</body>
+</html>
