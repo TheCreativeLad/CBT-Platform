@@ -23,7 +23,6 @@
         }
         .modal-content {
             background-color: #fefefe;
-            margin: 15% auto;
             padding: 20px;
             border: 1px solid #888;
             width: 80%;
@@ -52,7 +51,7 @@
             <h1 class="text-2xl font-bold text-slate-800">Question {{ current_question_index + 1 }} of {{ total_questions }}</h1>
             <div class="flex items-center space-x-2">
                 <span class="text-slate-600 font-semibold">Time Left:</span>
-                <span id="timer" class="bg-slate-200 text-slate-800 font-bold py-1 px-3 rounded-md shadow-inner"></span>
+                <span id="timer" class="bg-slate-200 text-slate-800 font-bold py-1 px-3 rounded-md shadow-inner">--:--</span>
             </div>
         </div>
 
@@ -69,7 +68,11 @@
                 </label>
             {% endfor %}
             <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:scale-105 mt-6">
-                Next
+                {% if current_question_index + 1 == total_questions %}
+                Submit Quiz
+                {% else %}
+                Next Question
+                {% endif %}
             </button>
         </form>
     </div>
@@ -77,12 +80,12 @@
     <!-- Instructions Modal -->
     <div id="instructionsModal" class="modal">
         <div class="modal-content">
-            <span class="close" onclick="closeInstructionsModal()">&times;</span>
             <h2 class="text-2xl font-bold mb-4">Quiz Instructions</h2>
             <div class="text-left text-slate-700" id="instructions-content">
                 {{ instructions|safe }}
             </div>
-            <button onclick="closeInstructionsModal()" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Start Quiz</button>
+            <p class="text-lg font-bold text-slate-800 mt-4">Total Quiz Duration: <span class="text-blue-600">{{ timer_minutes }} minutes</span></p>
+            <button id="start-quiz-btn" class="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Start Quiz</button>
         </div>
     </div>
     
@@ -111,48 +114,24 @@
         const quizForm = document.getElementById('quizForm');
         let warningShown = false;
         
-        let timeLeft = {{ timer_minutes }} * 60;
+        let timeLeft = {{ remaining_time_seconds }};
         let timerInterval;
 
-        // Function to start the timer
-        function startTimer() {
-            timerInterval = setInterval(updateTimer, 1000);
-        }
-
-        // Show instructions modal on page load for the first question
-        // Otherwise, start the timer immediately for subsequent questions
-        window.onload = function() {
-            if ({{ current_question_index }} === 0) {
-                instructionsModal.style.display = 'flex';
-            } else {
-                startTimer();
-            }
-        }
-
-        // Close instruction modal and start timer
-        function closeInstructionsModal() {
-            instructionsModal.style.display = 'none';
-            startTimer();
-        }
-
-        // Close warning modal
-        function closeWarningModal() {
-            warningModal.style.display = 'none';
-        }
-        
+        // Function to format time as MM:SS
         function formatTime(seconds) {
+            if (seconds < 0) seconds = 0; // Prevent negative time display
             const minutes = Math.floor(seconds / 60);
             const remainingSeconds = seconds % 60;
             return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
         }
-
+        
         function updateTimer() {
             if (timeLeft <= 0) {
                 clearInterval(timerInterval);
                 timeoutModal.style.display = 'flex';
-                // Wait a moment for the user to see the modal before submitting
+                // Automatically redirect to the submission page after a short delay
                 setTimeout(() => {
-                    quizForm.submit();
+                    window.location.href = "{{ url_for('submit_quiz') }}";
                 }, 2000); 
             } else {
                 timerDisplay.textContent = formatTime(timeLeft);
@@ -165,6 +144,46 @@
                 timeLeft--;
             }
         }
+        
+        // Close warning modal
+        function closeWarningModal() {
+            warningModal.style.display = 'none';
+        }
+        
+        // On page load, decide whether to show the instructions modal or start the timer.
+        window.onload = function() {
+            // We check if it's the first question and if the timer hasn't been set yet (remaining_time_seconds === -1).
+            if ({{ current_question_index }} === 0 && timeLeft === -1) {
+                instructionsModal.style.display = 'flex';
+            } else if (timeLeft !== -1) {
+                // If the timer has already been started, resume it immediately.
+                timerInterval = setInterval(updateTimer, 1000);
+            }
+        }
+        
+        // Event listener for the "Start Quiz" button in the instructions modal.
+        const startQuizButton = document.getElementById('start-quiz-btn');
+        startQuizButton.addEventListener('click', () => {
+            fetch('/set_quiz_start_time', { method: 'POST' })
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    } else {
+                        throw new Error('Failed to set quiz start time');
+                    }
+                })
+                .then(data => {
+                    instructionsModal.style.display = 'none';
+                    timeLeft = data.total_duration_seconds;
+                    timerInterval = setInterval(updateTimer, 1000);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    // Use a custom message box instead of alert()
+                    const errorMessage = `Could not start quiz. Please try again. Error: ${error.message}`;
+                    alert(errorMessage);
+                });
+        });
     </script>
 </body>
 </html>

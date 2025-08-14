@@ -26,6 +26,7 @@
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-slate-200">
+                        <!-- Looping through the dictionary items to get the username and data -->
                         {% for username, data in students.items() %}
                             <tr>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
@@ -47,9 +48,15 @@
             <p class="text-center text-slate-600">No students have signed up yet.</p>
         {% endif %}
 
-        <a href="{{ url_for('admin_dashboard') }}" class="mt-8 inline-block bg-slate-400 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out">
-            Back to Dashboard
-        </a>
+        <div class="mt-8 flex justify-between items-center w-full">
+            <a href="{{ url_for('admin_dashboard') }}" class="inline-block bg-slate-400 hover:bg-slate-500 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out">
+                Back to Dashboard
+            </a>
+            <!-- NEW: The export button links to the new route -->
+            <a href="{{ url_for('export_results') }}" class="inline-block bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition duration-300 ease-in-out">
+                Export to CSV
+            </a>
+        </div>
     </div>
 </body>
 </html>
