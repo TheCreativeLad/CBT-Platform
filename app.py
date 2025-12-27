@@ -150,55 +150,66 @@ def set_quiz_start_time():
 def quiz():
     """
     Displays the quiz questions one by one with a continuous timer.
+    Supports backward and forward navigation.
     """
     if 'username' not in session:
         flash('Please log in to continue.', 'error')
         return redirect(url_for('login'))
     
+    # Fetch questions
     questions_ref = db.collection('questions').order_by('id')
     questions_docs = questions_ref.stream()
     quiz_questions = [doc.to_dict() for doc in questions_docs]
     
+    # --- UPDATE: Get index from URL if provided (for the Previous button) ---
+    q_index_arg = request.args.get('q_index', type=int)
+    if q_index_arg is not None:
+        session['current_question_index'] = q_index_arg
+
     current_question_index = session.get('current_question_index', 0)
     user_answers = session.get('user_answers', {})
     
-    # Handle quiz submission logic for POST requests
     if request.method == 'POST':
         question_id = request.form.get('question_id')
         user_answer = request.form.get(question_id)
         
-        user_answers[question_id] = user_answer
-        session['user_answers'] = user_answers
+        # Save answer (only if one was selected)
+        if user_answer:
+            user_answers[question_id] = user_answer
+            session['user_answers'] = user_answers
         
+        # Move forward
         session['current_question_index'] = current_question_index + 1
         
-        # Check if it's the last question, submit if so
         if session['current_question_index'] >= len(quiz_questions):
             return redirect(url_for('submit_quiz'))
         else:
             return redirect(url_for('quiz'))
             
-    # Handle GET requests (displaying the page)
+    # Handle GET requests
     if current_question_index >= len(quiz_questions):
         return redirect(url_for('submit_quiz'))
+    if current_question_index < 0:
+        session['current_question_index'] = 0
+        current_question_index = 0
         
     current_question = quiz_questions[current_question_index]
     
-    # Fetch instructions and timer from Firestore
+    # --- UPDATE: Fetch the previously saved answer for this question ---
+    saved_answer = user_answers.get(current_question['id'])
+    
     timer_doc = db.collection('settings').document('quiz_timer').get()
     timer_minutes = timer_doc.to_dict().get('duration_minutes', 30) if timer_doc.exists else 30
     
     instructions_doc = db.collection('settings').document('quiz_settings').get()
     instructions = instructions_doc.to_dict().get('instructions', 'No instructions set.') if instructions_doc.exists else 'No instructions set.'
     
-    # Calculate remaining time for the timer. This is the key part.
-    remaining_time_seconds = -1  # Default value
+    remaining_time_seconds = -1
     if 'quiz_start_time' in session:
         total_duration_seconds = timer_minutes * 60
         elapsed_time = datetime.datetime.now().timestamp() - session['quiz_start_time']
         remaining_time_seconds = int(total_duration_seconds - elapsed_time)
         
-        # If time has run out, redirect to submission
         if remaining_time_seconds <= 0:
             flash('Time is up! Your quiz has been automatically submitted.', 'warning')
             return redirect(url_for('submit_quiz'))
@@ -209,7 +220,8 @@ def quiz():
                             total_questions=len(quiz_questions),
                             instructions=instructions,
                             timer_minutes=timer_minutes,
-                            remaining_time_seconds=remaining_time_seconds)
+                            remaining_time_seconds=remaining_time_seconds,
+                            saved_answer=saved_answer) # Pass the saved answer to HTML
     
 @app.route('/submit_quiz')
 def submit_quiz():
@@ -480,3 +492,4 @@ def export_results():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
