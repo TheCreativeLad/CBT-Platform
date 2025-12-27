@@ -63,21 +63,31 @@
             <input type="hidden" name="question_id" value="{{ question.id }}">
             {% for choice in question.choices %}
                 <label class="block bg-slate-50 p-4 rounded-lg border border-slate-200 hover:bg-slate-100 transition duration-200 cursor-pointer">
-                    <input type="radio" name="{{ question.id }}" value="{{ choice }}" class="mr-3" required>
+                    <input type="radio" name="{{ question.id }}" value="{{ choice }}" class="mr-3" 
+                    {% if saved_answer == choice %} checked {% endif %}>
                     <span class="text-base text-slate-800">{{ choice }}</span>
                 </label>
             {% endfor %}
-            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:scale-105 mt-6">
-                {% if current_question_index + 1 == total_questions %}
-                Submit Quiz
-                {% else %}
-                Next Question
+
+            <div class="flex flex-col sm:flex-row gap-4 mt-6">
+                {% if current_question_index > 0 %}
+                <a href="{{ url_for('quiz', q_index=current_question_index - 1) }}" 
+                   class="flex-1 bg-slate-500 hover:bg-slate-600 text-white text-center font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+                    Previous
+                </a>
                 {% endif %}
-            </button>
+
+                <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
+                    {% if current_question_index + 1 == total_questions %}
+                    Submit Quiz
+                    {% else %}
+                    Next Question
+                    {% endif %}
+                </button>
+            </div>
         </form>
     </div>
 
-    <!-- Instructions Modal -->
     <div id="instructionsModal" class="modal">
         <div class="modal-content">
             <h2 class="text-2xl font-bold mb-4">Quiz Instructions</h2>
@@ -89,7 +99,6 @@
         </div>
     </div>
     
-    <!-- Warning Modal for time running out -->
     <div id="warningModal" class="modal">
         <div class="modal-content">
             <h2 class="text-2xl font-bold mb-4 text-red-600">Time's Almost Up!</h2>
@@ -98,7 +107,6 @@
         </div>
     </div>
 
-    <!-- Final Submission Modal for time running out -->
     <div id="timeoutModal" class="modal">
         <div class="modal-content">
             <h2 class="text-2xl font-bold mb-4 text-red-600">Time Is Up!</h2>
@@ -117,9 +125,8 @@
         let timeLeft = {{ remaining_time_seconds }};
         let timerInterval;
 
-        // Function to format time as MM:SS
         function formatTime(seconds) {
-            if (seconds < 0) seconds = 0; // Prevent negative time display
+            if (seconds < 0) seconds = 0; 
             const minutes = Math.floor(seconds / 60);
             const remainingSeconds = seconds % 60;
             return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
@@ -129,7 +136,6 @@
             if (timeLeft <= 0) {
                 clearInterval(timerInterval);
                 timeoutModal.style.display = 'flex';
-                // Automatically redirect to the submission page after a short delay
                 setTimeout(() => {
                     window.location.href = "{{ url_for('submit_quiz') }}";
                 }, 2000); 
@@ -145,23 +151,18 @@
             }
         }
         
-        // Close warning modal
         function closeWarningModal() {
             warningModal.style.display = 'none';
         }
         
-        // On page load, decide whether to show the instructions modal or start the timer.
         window.onload = function() {
-            // We check if it's the first question and if the timer hasn't been set yet (remaining_time_seconds === -1).
             if ({{ current_question_index }} === 0 && timeLeft === -1) {
                 instructionsModal.style.display = 'flex';
             } else if (timeLeft !== -1) {
-                // If the timer has already been started, resume it immediately.
                 timerInterval = setInterval(updateTimer, 1000);
             }
         }
         
-        // Event listener for the "Start Quiz" button in the instructions modal.
         const startQuizButton = document.getElementById('start-quiz-btn');
         startQuizButton.addEventListener('click', () => {
             fetch('/set_quiz_start_time', { method: 'POST' })
@@ -179,7 +180,6 @@
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    // Use a custom message box instead of alert()
                     const errorMessage = `Could not start quiz. Please try again. Error: ${error.message}`;
                     alert(errorMessage);
                 });
